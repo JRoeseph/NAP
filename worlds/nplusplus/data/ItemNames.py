@@ -65,3 +65,6 @@ comp_e01 = "Episode E-01 Completed"
 comp_e02 = "Episode E-02 Completed"
 comp_e03 = "Episode E-03 Completed"
 comp_e04 = "Episode E-04 Completed"
+
+# Filler Items
+palette_swap = "Random Color Palette Swap"
