@@ -7,18 +7,29 @@ class Objective(Choice):
     What must be done to for the randomizer to be considered 'Complete'
     """
     display_name = "Objective"
-    option_triple_bingo = 0
-    option_all_episodes = 1
+    option_single_bingo = 0
+    option_triple_bingo = 1
+    option_one_episode = 2
+    option_all_episodes = 3
+    default = 1
+
+class InitialGoldValue(Range):
+    """
+    The maximum amount of frames (1/60th of a second) an individual piece of gold can be worth
+    """
+    display_name = "Initial Gold Value"
+    range_start = 0
+    range_end = 300
     default = 0
 
 class MaximumGoldValue(Range):
     """
-    The maximum amount of tenths of seconds an individual piece of gold can be worth
+    The maximum amount of frames (1/60th of a second) an individual piece of gold can be worth
     """
     display_name = "Maximum Gold Value"
     range_start = 0
-    range_end = 50
-    default = 20
+    range_end = 300
+    default = 120
 
 class InitialStartingTime(Range):
     """
@@ -58,12 +69,14 @@ class MaximumTimeCapMultiplier(Range):
 
 class AdditionalChallenges(Range):
     """
-    The amount of additional challenges to be added to the levels
+    The maximum amount of additional challenges to be added to the levels. 125 is the minimum to ensure on average there are
+    two checks per level (1 completion, 1 challenge). This is a maximum. If not enough challenges exist on the randomly
+    picked levels, it will select all of them 
     """
     display_name = "Additional Challenges"
-    range_start = 0
-    range_end = 250
-    default = 50
+    range_start = 125
+    range_end = 375
+    default = 175
   
 class TrapPercentage(Range):
     """
@@ -79,6 +92,7 @@ nplusplus_option_groups = [
         Objective
     ]),
     OptionGroup("Timer Options", [
+        InitialGoldValue,
         MaximumGoldValue,
         InitialStartingTime,
         MaximumStartingTimeMultiplier,
@@ -97,6 +111,7 @@ nplusplus_option_groups = [
 class NplusplusOptions(PerGameCommonOptions):
     Objective: Objective
     
+    InitialGoldValue: InitialGoldValue
     MaximumGoldValue: MaximumGoldValue
     InitialStartingTime: InitialStartingTime
     MaximumStartingTimeMultiplier: MaximumStartingTimeMultiplier

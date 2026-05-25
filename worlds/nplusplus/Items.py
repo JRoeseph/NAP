@@ -1,9 +1,10 @@
 from typing import NamedTuple, Optional
 
 from BaseClasses import Item, ItemClassification
-from data import ItemNames
+from .data import ItemNames
 
-from __init__ import nplusplus_base_id
+# TODO: This id will need to be changed to not overlap with other games
+nplusplus_base_id = 0xBAC0000
 
 class NplusplusItem(Item):
   game = "Nplusplus"
@@ -71,6 +72,9 @@ def generate_item_data_table() -> dict[str, NplusplusItemData]:
           **start_time_item_data_table,
           **max_time_item_data_table,
           **filler_item_data_table}
+
+def generate_item_table() -> dict[str, int]:
+    return {name: data.code for name, data in generate_item_data_table().items() if data.code is not None}
 
 def generate_item_groups() -> dict[str, list[str]]:
   item_groups: dict[str, list[str]] = {

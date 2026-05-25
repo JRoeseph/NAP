@@ -25,20 +25,6 @@ prog_e02 = "E-02 Progressive Level Unlock"
 prog_e03 = "E-03 Progressive Level Unlock"
 prog_e04 = "E-04 Progressive Level Unlock"
 
-# Time Unlocks
-gold_time_1   = "+0.1 Seconds of Gold Time"
-gold_time_2   = "+0.2 Seconds of Gold Time"
-gold_time_5   = "+0.5 Seconds of Gold Time"
-gold_time_10  = "+1.0 Second of Gold Time"
-start_time_1  = "+1 Second of Start Time"
-start_time_2  = "+2 Seconds of Start Time"
-start_time_5  = "+5 Seconds of Start Time"
-start_time_10 = "+10 Seconds of Start Time"
-max_time_1    = "+1 Second of Max Time"
-max_time_2    = "+2 Seconds of Max Time"
-max_time_5    = "+5 Seconds of Max Time"
-max_time_10   = "+10 Seconds of Max Time"
-
 # Episode Completion Unlocks
 comp_a00 = "Episode A-00 Completed"
 comp_a01 = "Episode A-01 Completed"
@@ -65,6 +51,20 @@ comp_e01 = "Episode E-01 Completed"
 comp_e02 = "Episode E-02 Completed"
 comp_e03 = "Episode E-03 Completed"
 comp_e04 = "Episode E-04 Completed"
+
+# Time Unlocks
+gold_time_1   = "1 frame of Gold Time"
+gold_time_2  = "2 frames of Gold Time"
+gold_time_5  = "5 frames of Gold Time"
+gold_time_10  = "10 frames of Gold Time"
+start_time_1  = "+1 Second of Start Time"
+start_time_2  = "+2 Seconds of Start Time"
+start_time_5  = "+5 Seconds of Start Time"
+start_time_10 = "+10 Seconds of Start Time"
+max_time_1    = "+1 Second of Max Time"
+max_time_2    = "+2 Seconds of Max Time"
+max_time_5    = "+5 Seconds of Max Time"
+max_time_10   = "+10 Seconds of Max Time"
 
 # Filler Items
 palette_swap = "Random Color Palette Swap"
