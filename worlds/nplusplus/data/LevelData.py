@@ -1,7 +1,7 @@
-from ..Levels import Level
+from ..Levels import Level, Completion, Challenge
 
 intro_levels: list[Level] = [
-  Level("SI-A-00-00",   0,   15, {0x0:  9.000,  0x1:  9.000}),
+  Level("SI-A-00-00",   0,   15, [Completion(Challenge.base, 1, 9.00), Completion(Challenge.gpp, 1, 9.00)]),
   Level("SI-A-00-01",   1,   16, {0x0:  4.000,  0x1:  4.000}),
   Level("SI-A-00-02",   2,   90, {0x0:  4.000,  0x1: 90.000}),
   Level("SI-A-00-03",   3,   12, {0x0:  6.000,  0x1:  6.000}),

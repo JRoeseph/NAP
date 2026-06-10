@@ -130,6 +130,8 @@ class NplusplusOpenWorld(World):
         needed_time: float = 0
         episode: Episode
         for episode in self.episodes:
+            # TODO: Consider a min time calculation that would INCLUDE gold 
+            # This would in theory make the randomizer instantly harder, so we would need to embrace difficulty settings
             min_time: float = episode.minimum_no_gold_time()
             if min_time > needed_time:
                 needed_time = min_time
