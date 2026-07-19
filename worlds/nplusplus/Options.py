@@ -136,12 +136,20 @@ class AverageDifficulty(Choice):
     default = 5
 
 class LowestToAverageDifficultyRatio(Range):
+    """
+    The ratio of the amount of levels at the lowest difficulty to the average difficulty, increasing linearly at each
+    difficulty to the average difficulty
+    """
     display_name = "Lowest To Average Difficulty Ratio"
     range_start = 1
     range_end = 10
     default = 3
 
 class HighestToAverageDifficultyRatio(Range):
+    """
+    The ratio of the amount of levels at the higher difficulty to the average difficulty, increasing linearly at each
+    difficulty to the average difficulty
+    """
     display_name = "Highest To Average Difficulty Ratio"
     range_start = 1
     range_end = 10

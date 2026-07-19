@@ -5,7 +5,7 @@ from typing import Any
 from BaseClasses import Location, Tutorial, ItemClassification, CollectionState, Region
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
-from .Options import NplusplusOptions, nplusplus_option_groups
+from .Options import NplusplusOptions, nplusplus_option_groups, InitialStartingTime
 from .Items import NplusplusItem, NplusplusItemData, generate_item_data_table, generate_item_table, generate_item_groups, level_unlock_item_data_table
 from .Locations import NplusplusLocation, generate_location_groups, location_table, generate_location_data_table
 from .data import ItemNames
@@ -60,27 +60,47 @@ class NplusplusOpenWorld(World):
         # Get all possible levels
         remaining_levels: list[Level] = self.get_picked_levels()
 
-        # Manually pick out one under the InitialStartingTime to be the starting level, and 4 random levels to be the other 4 in the first episode
-        options: NplusplusOptions = self.options
-        possible_starting_levels: list[Level] = list(filter(lambda level: level.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)) < options.InitialStartingTime, remaining_levels))
-        starting_level: Level = possible_starting_levels[self.random.randint(0, len(possible_starting_levels)-1)]
-        remaining_levels.remove(starting_level)
-        episode_a0_levels: list[Level] = [starting_level]
-        for _ in range(4):
-            episode_a0_levels.append(remaining_levels.pop(self.random.randint(0,len(remaining_levels)-1)))
-        episode_a0_levels.sort(key=lambda level: level.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)))
-        for idx in range(5):
-            self.location_to_level[f"A-00-0{idx}"] = episode_a0_levels[idx]
-        self.episodes.append(Episode("A-00",episode_a0_levels[0],episode_a0_levels[1],episode_a0_levels[2],episode_a0_levels[3],episode_a0_levels[4]))
+        # Manually pick out 5 levels under initial starting time to be the initially unlocked levels. If they don't exist,
+        # pick the next shortest levels to populate the initial 5 levels and adjust the starting time accordingly
+        possible_starting_levels: list[Level] = sorted(remaining_levels, key=lambda item: item.get_time(Challenge.base, self.options.HighestDifficulty))
+        valid_levels: list[list[Level]] = [[], [], [], []]
+        for level in possible_starting_levels:
+            if level.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)) < float(self.options.InitialStartingTime):
+                valid_challenges: int = 0
+                for time in level.times:
+                    if time.difficulty < self.options.HighestDifficulty and time.time < float(self.options.InitialStartingTime):
+                        valid_challenges += 1
+                if valid_challenges > 3:
+                    valid_challenges = 3
+                valid_levels[valid_challenges].append(level)
+            else:
+                break
+        initial_levels: list[Level] = []
+        for i in range (3,-1,-1):
+            while valid_levels[i]:
+                if len(initial_levels) >= 5:
+                    break
+                new_level: Level = valid_levels[i].pop(self.random.randint(0,len(valid_levels[i])-1))
+                possible_starting_levels.remove(new_level)
+                initial_levels.append(new_level)
+        if len(initial_levels) < 5:
+            for _ in range(len(initial_levels), 5):
+                initial_levels.append(possible_starting_levels.pop(0))
+            self.options.InitialStartingTime = InitialStartingTime(int(initial_levels[4].get_time(Challenge.base, Difficulty(self.options.HighestDifficulty))))
+        for level in initial_levels:
+            remaining_levels.remove(level)
         for episode_name in episode_names:
-            if episode_name != "A-00":
-                episode_levels: list[Level] = []
-                for _ in range(5):
-                    episode_levels.append(remaining_levels.pop(self.random.randint(0,len(remaining_levels)-1)))
-                episode_levels.sort(key=lambda level: level.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)))
-                for idx in range(5):
-                    self.location_to_level[f"{episode_name}-0{idx}"] = episode_levels[idx]
-                self.episodes.append(Episode(episode_name, episode_levels[0], episode_levels[1], episode_levels[2], episode_levels[3], episode_levels[4]))
+            to_add: int = 5
+            if episode_name in ["A-00", "B-00", "C-00", "D-00", "E-00"]:
+                to_add -= 1
+            episode_levels: list[Level] = []
+            for _ in range(to_add):
+                episode_levels.append(remaining_levels.pop(self.random.randint(0,len(remaining_levels)-1)))
+            episode_levels.sort(key=lambda elevel: elevel.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)))
+            episode_levels.insert(0, initial_levels[ord(episode_name[0])-ord('A')])
+            for idx in range(5):
+                self.location_to_level[f"{episode_name}-0{idx}"] = episode_levels[idx]
+            self.episodes.append(Episode(episode_name, episode_levels[0], episode_levels[1], episode_levels[2], episode_levels[3], episode_levels[4]))
 
     @staticmethod
     def divide_levels_by_difficulty() -> list[list[Level]]:
@@ -174,9 +194,25 @@ class NplusplusOpenWorld(World):
             for completion in level.times:
                 if completion.challenge != Challenge.base and completion.challenge != Challenge.opt and completion.difficulty <= Difficulty(self.options.HighestDifficulty):
                     challenge_list.append((location, completion))
-        weight_list: list[float] = self.get_weight_list(int(self.options.AdditionalChallenges))
         challenge_list_by_diff: list[list[tuple[str, Completion]]] = NplusplusOpenWorld.divide_challenges_by_difficulty(challenge_list)
-        for _ in range(self.options.AdditionalChallenges):
+        for i in range(5):
+            level: Level = self.episodes[i].levels[0]
+            completions: list[Completion] = list(filter(lambda time: time.challenge not in [Challenge.base, Challenge.opt] and time.difficulty <= Difficulty(self.options.HighestDifficulty) and time.time < float(self.options.InitialStartingTime), level.times))
+            challenges_to_add: list[Completion] = []
+            if len(completions) <= 3:
+                challenges_to_add = completions
+            else:
+                for _ in range(3):
+                    challenges_to_add.append(completions.pop(self.random.randint(0, len(completions))))
+            rand_challenge_loc: str = F"{chr(ord('A') + i)}-00-00"
+            self.included_challenges[rand_challenge_loc] = []
+            for j in range(len(challenges_to_add)):
+                self.included_challenges[rand_challenge_loc].append(challenges_to_add[j])
+                self.challenge_locs.append(
+                    rand_challenge_loc + f" Challenge {j+1} Completion")
+        initial_challenges: int = len(self.included_challenges)
+        weight_list: list[float] = self.get_weight_list(int(self.options.AdditionalChallenges)-initial_challenges)
+        for _ in range(self.options.AdditionalChallenges-initial_challenges):
             has_challenges: bool = False
             for diff in challenge_list_by_diff:
                 if diff:
@@ -485,6 +521,4 @@ class NplusplusOpenWorld(World):
             challenge_data.append(level_challenge_data)
         slot_data["level_data"] = level_data
         slot_data["challenge_data"] = challenge_data
-        with open(f"output/{self.multiworld.seed}_debug.json", "w") as file:
-            file.write(json.dumps(slot_data))
         return slot_data
