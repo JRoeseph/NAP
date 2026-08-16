@@ -5,6 +5,7 @@ from typing import Any
 from BaseClasses import Location, Tutorial, ItemClassification, CollectionState, Region
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
+from Options import OptionError
 from .Options import NplusplusOptions, nplusplus_option_groups, InitialStartingTime
 from .Items import NplusplusItem, NplusplusItemData, generate_item_data_table, generate_item_table, generate_item_groups, level_unlock_item_data_table
 from .Locations import NplusplusLocation, generate_location_groups, location_table, generate_location_data_table
@@ -91,20 +92,20 @@ class NplusplusOpenWorld(World):
             remaining_levels.remove(level)
         for episode_name in episode_names:
             to_add: int = 5
-            if episode_name in ["A-00", "B-00", "C-00", "D-00", "E-00"]:
-                to_add -= 1
             episode_levels: list[Level] = []
+            if episode_name in ["A-00", "B-00", "C-00", "D-00", "E-00"]:
+                episode_levels.insert(0, initial_levels[ord(episode_name[0]) - ord('A')])
+                to_add -= 1
             for _ in range(to_add):
                 episode_levels.append(remaining_levels.pop(self.random.randint(0,len(remaining_levels)-1)))
             episode_levels.sort(key=lambda elevel: elevel.get_time(Challenge.base, Difficulty(self.options.HighestDifficulty)))
-            episode_levels.insert(0, initial_levels[ord(episode_name[0])-ord('A')])
             for idx in range(5):
                 self.location_to_level[f"{episode_name}-0{idx}"] = episode_levels[idx]
             self.episodes.append(Episode(episode_name, episode_levels[0], episode_levels[1], episode_levels[2], episode_levels[3], episode_levels[4]))
 
     @staticmethod
     def divide_levels_by_difficulty() -> list[list[Level]]:
-        output: list[list[Level]] = [[]]*12
+        output: list[list[Level]] = [[],[],[],[],[],[],[],[],[],[],[],[]]
         for level in levels:
             for completion in level.times:
                 if completion.challenge in [Challenge.base, Challenge.opt]:
@@ -126,7 +127,7 @@ class NplusplusOpenWorld(World):
             ratio: float = 1 / int(self.options.HighestToAverageDifficultyRatio)
             ratio_increment: float = (1 - ratio) / (highest_difficulty - average_difficulty)
             for i in range(highest_difficulty - average_difficulty):
-                output[average_difficulty+i] = 1 - (i+1)*ratio_increment
+                output[average_difficulty+i+1] = 1 - (i+1)*ratio_increment
         levels_per_weight: float = count/sum(output)
         return [diff * levels_per_weight for diff in output]
 
@@ -136,15 +137,17 @@ class NplusplusOpenWorld(World):
         output: list[Level] = []
         for _ in range (125):
             difficulty: int = self.get_weighted_difficulty(weight_list)
-            if not levels_by_difficulty[difficulty]:
+            while not levels_by_difficulty[difficulty]:
                 NplusplusOpenWorld.remove_weight(weight_list, difficulty)
-            else:
-                picked_level: Level = levels_by_difficulty[difficulty][0]
-                for time in picked_level.times:
-                    if time.challenge in [Challenge.base, Challenge.opt]:
-                        levels_by_difficulty[time.difficulty].remove(picked_level)
-                output.append(picked_level)
-                NplusplusOpenWorld.pop_weight(weight_list, difficulty)
+                difficulty = self.get_weighted_difficulty(weight_list)
+            picked_level: Level = levels_by_difficulty[difficulty][0]
+            for time in picked_level.times:
+                if time.challenge in [Challenge.base, Challenge.opt]:
+                    levels_by_difficulty[time.difficulty].remove(picked_level)
+            output.append(picked_level)
+            NplusplusOpenWorld.pop_weight(weight_list, difficulty)
+        if len(output) != 125:
+            raise Exception("Nplusplus: Failed to select 125 levels")
         return output
 
     def get_weighted_difficulty(self, weights: list[float]) -> int:
@@ -163,91 +166,117 @@ class NplusplusOpenWorld(World):
             for weight in weights:
                 if weight > 0:
                     weights_remaining += 1
-            weight_to_add: float = (-weights[index])/weights_remaining
-            for weight in weights:
-                if weight > 0:
-                    weight += weight_to_add
+            if weights_remaining != 0:
+                weight_to_add: float = (-weights[index])/weights_remaining
+                for weight in weights:
+                    if weight > 0:
+                        weight += weight_to_add
 
     @staticmethod
-    def remove_weight(weights: list[float], idx: int) -> None:
+    def remove_weight(weights: list[float], idx: int) -> bool:
         weight_removed: float = weights[idx]
         weights[idx] = 0
         weights_remaining = 0
         for weight in weights:
             if weight > 0:
                 weights_remaining += 1
-        weight_per_weight: float = weight_removed/weights_remaining
-        for idx, weight in enumerate(weights):
-            if weight > 0:
-                weights[idx] += weight_per_weight
+        if weights_remaining == 0:
+            return False
+        else:
+            weight_per_weight: float = weight_removed/weights_remaining
+            for idx, weight in enumerate(weights):
+                if weight > 0:
+                    weights[idx] += weight_per_weight
+        return True
+
+    def num_picked_challenges(self) -> int:
+        total: int = 0
+        for level_list in self.included_challenges.values():
+            total += len(level_list)
+        return total
 
     @staticmethod
-    def divide_challenges_by_difficulty(challenges: list[tuple[str, Completion]]) -> list[list[tuple[str, Completion]]]:
-        output: list[list[tuple[str, Completion]]] = [[]] * 12
-        for challenge in challenges:
-            output[int(challenge[1].difficulty)].append(challenge)
-        return output
+    def has_challenges(challenges_by_diff: list[list[tuple[str, Completion]]]):
+        for diff in challenges_by_diff:
+            if diff:
+                return True
+        return False
 
+    # TODO: Remove optimal/not optimal time when adding the other
     def pick_challenges(self) -> None:
-        challenge_list: list[tuple[str, Completion]] = []
+        challenges_by_diff: list[list[tuple[str, Completion]]] = [[], [], [], [], [], [], [], [], [], [], [], []]
         for location, level in self.location_to_level.items():
-            for completion in level.times:
-                if completion.challenge != Challenge.base and completion.challenge != Challenge.opt and completion.difficulty <= Difficulty(self.options.HighestDifficulty):
-                    challenge_list.append((location, completion))
-        challenge_list_by_diff: list[list[tuple[str, Completion]]] = NplusplusOpenWorld.divide_challenges_by_difficulty(challenge_list)
+            for comp in level.times:
+                if comp.challenge not in [Challenge.base, Challenge.opt] and Difficulty(
+                        self.options.HighestDifficulty) >= comp.difficulty >= Difficulty(self.options.LowestDifficulty):
+                    challenges_by_diff[comp.difficulty].append((location, comp))
         for i in range(5):
-            level: Level = self.episodes[i].levels[0]
-            completions: list[Completion] = list(filter(lambda time: time.challenge not in [Challenge.base, Challenge.opt] and time.difficulty <= Difficulty(self.options.HighestDifficulty) and time.time < float(self.options.InitialStartingTime), level.times))
-            challenges_to_add: list[Completion] = []
-            if len(completions) <= 3:
-                challenges_to_add = completions
-            else:
-                for _ in range(3):
-                    challenges_to_add.append(completions.pop(self.random.randint(0, len(completions))))
             rand_challenge_loc: str = F"{chr(ord('A') + i)}-00-00"
-            self.included_challenges[rand_challenge_loc] = []
-            for j in range(len(challenges_to_add)):
-                self.included_challenges[rand_challenge_loc].append(challenges_to_add[j])
-                self.challenge_locs.append(
-                    rand_challenge_loc + f" Challenge {j+1} Completion")
-        initial_challenges: int = len(self.included_challenges)
-        weight_list: list[float] = self.get_weight_list(int(self.options.AdditionalChallenges)-initial_challenges)
-        for _ in range(self.options.AdditionalChallenges-initial_challenges):
-            has_challenges: bool = False
-            for diff in challenge_list_by_diff:
-                if diff:
-                    has_challenges = True
-            if not has_challenges:
-                return
-            while True:
-                difficulty: int = self.get_weighted_difficulty(weight_list)
-                if not challenge_list[difficulty]:
-                    NplusplusOpenWorld.remove_weight(weight_list, difficulty)
+            starter_level: Level = self.episodes[i].levels[0]
+            valid_challenges: list[Completion] = []
+            for comp in starter_level.times:
+                if comp.challenge in [Challenge.base, Challenge.opt]:
+                    continue
+                if comp.difficulty > Difficulty(self.options.HighestDifficulty):
+                    continue
+                if comp.time > float(self.options.InitialStartingTime):
+                    continue
+                valid_challenges.append(comp)
+            if valid_challenges:
+                self.included_challenges[rand_challenge_loc] = []
+            for j in range(3):
+                if not valid_challenges:
+                    break
+                added_challenge: Completion = self.random.choice(valid_challenges)
+                valid_challenges.remove(added_challenge)
+                for chal in valid_challenges:
+                    if chal.challenge ^ Challenge.opt == added_challenge.challenge:
+                        valid_challenges.remove(chal)
+                        break
+                for comp in valid_challenges:
+                    if comp.challenge ^ Challenge.opt == added_challenge.challenge:
+                        valid_challenges.remove(comp)
+                        challenges_by_diff[added_challenge.difficulty].remove((rand_challenge_loc, added_challenge))
+                        break
+                self.included_challenges[rand_challenge_loc].append(added_challenge)
+                self.challenge_locs.append(rand_challenge_loc + f" Challenge {j + 1} Completion")
+                challenges_by_diff[added_challenge.difficulty].remove((rand_challenge_loc, added_challenge))
+        weight_list: list[float] = self.get_weight_list(self.options.AdditionalChallenges - self.num_picked_challenges())
+        while self.num_picked_challenges() < self.options.AdditionalChallenges and NplusplusOpenWorld.has_challenges(challenges_by_diff):
+            difficulty: int = self.get_weighted_difficulty(weight_list)
+            if not challenges_by_diff[difficulty]:
+                if not NplusplusOpenWorld.remove_weight(weight_list, difficulty):
+                    weight_list: list[float] = self.get_weight_list(self.options.AdditionalChallenges - self.num_picked_challenges())
+                    for i in range(len(challenges_by_diff)):
+                        if not challenges_by_diff[i]:
+                            NplusplusOpenWorld.remove_weight(weight_list, i)
+            else:
+                idx: int = self.random.randint(0, len(challenges_by_diff[difficulty]) - 1)
+                rand_challenge_loc: str
+                rand_challenge: Completion
+                (rand_challenge_loc, rand_challenge) = challenges_by_diff[difficulty].pop(idx)
+                if rand_challenge_loc in self.included_challenges and len(self.included_challenges[rand_challenge_loc]) >= 3:
+                    continue
                 else:
-                    idx: int = self.random.randint(0,len(challenge_list_by_diff[difficulty])-1)
-                    rand_challenge_loc: str
-                    rand_challenge: Completion
-                    (rand_challenge_loc, rand_challenge) = challenge_list_by_diff[difficulty][idx]
-                    if rand_challenge_loc in self.included_challenges and len(self.included_challenges[rand_challenge_loc]) >= 3:
-                        challenge_list_by_diff[difficulty].pop(idx)
-                        if not challenge_list:
-                            return
-                    else:
-                        if rand_challenge_loc not in self.included_challenges:
-                            self.included_challenges[rand_challenge_loc] = []
-                        for completion in self.included_challenges[rand_challenge_loc]:
-                            if rand_challenge.challenge ^ Challenge.opt == completion.challenge:
-                                challenge_list_by_diff[difficulty].pop(idx)
+                    if rand_challenge_loc in self.included_challenges:
+                        has_dupe_challenge: bool = False
+                        for comp in self.included_challenges[rand_challenge_loc]:
+                            if rand_challenge.challenge ^ Challenge.opt == comp.challenge:
+                                has_dupe_challenge = True
                                 break
-                        else:
-                            NplusplusOpenWorld.pop_weight(weight_list, difficulty)
-                            self.included_challenges[rand_challenge_loc].append(rand_challenge)
-                            self.challenge_locs.append(rand_challenge_loc + f" Challenge {len(self.included_challenges[rand_challenge_loc])} Completion")
-                            challenge_list_by_diff[difficulty].pop(idx)
-                            break
-
+                        if has_dupe_challenge:
+                            continue
+                    else:
+                        self.included_challenges[rand_challenge_loc] = []
+                    NplusplusOpenWorld.pop_weight(weight_list, difficulty)
+                    self.included_challenges[rand_challenge_loc].append(rand_challenge)
+                    self.challenge_locs.append(rand_challenge_loc + f" Challenge {len(self.included_challenges[rand_challenge_loc])} Completion")
 
     def generate_early(self) -> None:
+        if self.options.LowestDifficulty > self.options.AverageDifficulty:
+            raise OptionError("Nplusplus: Lowest difficulty cannot be higher than average difficulty")
+        if self.options.AverageDifficulty > self.options.HighestDifficulty:
+            raise OptionError("Nplusplus: Highest difficulty cannot be lower than the average difficulty")
         self.episodes = []
         self.included_challenges = {}
         self.location_to_level = {}
