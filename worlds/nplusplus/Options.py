@@ -77,7 +77,84 @@ class AdditionalChallenges(Range):
     range_start = 125
     range_end = 375
     default = 175
-  
+
+class LowestDifficulty(Choice):
+    """
+    What is the lowest difficulty of levels you want to face
+    """
+    display_name = "Lowest Difficulty"
+    option_trivial = 0
+    option_beginner = 1
+    option_developing = 2
+    option_developed = 3
+    option_novice = 4
+    option_intermediate = 5
+    option_experienced = 6
+    option_advanced = 7
+    option_expert = 8
+    option_master = 9
+    option_grandmaster = 10
+    option_endgame = 11
+    default = 0
+
+class HighestDifficulty(Choice):
+    """
+    What is the highest difficulty of levels you want to face
+    """
+    display_name = "Highest Difficulty"
+    option_trivial = 0
+    option_beginner = 1
+    option_developing = 2
+    option_developed = 3
+    option_novice = 4
+    option_intermediate = 5
+    option_experienced = 6
+    option_advanced = 7
+    option_expert = 8
+    option_master = 9
+    option_grandmaster = 10
+    option_endgame = 11
+    default = 5
+
+class AverageDifficulty(Choice):
+    """
+    What is the average difficulty of levels you want to face.
+    """
+    display_name = "Average Difficulty"
+    option_trivial = 0
+    option_beginner = 1
+    option_developing = 2
+    option_developed = 3
+    option_novice = 4
+    option_intermediate = 5
+    option_experienced = 6
+    option_advanced = 7
+    option_expert = 8
+    option_master = 9
+    option_grandmaster = 10
+    option_endgame = 11
+    default = 5
+
+class LowestToAverageDifficultyRatio(Range):
+    """
+    The ratio of the amount of levels at the lowest difficulty to the average difficulty, increasing linearly at each
+    difficulty to the average difficulty
+    """
+    display_name = "Lowest To Average Difficulty Ratio"
+    range_start = 1
+    range_end = 10
+    default = 3
+
+class HighestToAverageDifficultyRatio(Range):
+    """
+    The ratio of the amount of levels at the higher difficulty to the average difficulty, increasing linearly at each
+    difficulty to the average difficulty
+    """
+    display_name = "Highest To Average Difficulty Ratio"
+    range_start = 1
+    range_end = 10
+    default = 3
+
 class TrapPercentage(Range):
     """
     TODO: The percentage of items after core progression items are added that are traps
@@ -100,7 +177,12 @@ nplusplus_option_groups = [
         MaximumTimeCapMultiplier
     ]),
     OptionGroup("Location Options", [
-        AdditionalChallenges
+        AdditionalChallenges,
+        LowestDifficulty,
+        HighestDifficulty,
+        AverageDifficulty,
+        LowestToAverageDifficultyRatio,
+        HighestToAverageDifficultyRatio
     ]),
     OptionGroup("Trap Options", [
         TrapPercentage
@@ -119,5 +201,10 @@ class NplusplusOptions(PerGameCommonOptions):
     MaximumTimeCapMultiplier: MaximumTimeCapMultiplier
     
     AdditionalChallenges: AdditionalChallenges
+    LowestDifficulty: LowestDifficulty
+    HighestDifficulty: HighestDifficulty
+    AverageDifficulty: AverageDifficulty
+    LowestToAverageDifficultyRatio: LowestToAverageDifficultyRatio
+    HighestToAverageDifficultyRatio: HighestToAverageDifficultyRatio
 
     TrapPercentage: TrapPercentage
