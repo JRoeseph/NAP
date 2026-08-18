@@ -1,0 +1,6 @@
+Nplusplus:
+  fuzz_constraints:
+    - option: LowestDifficulty
+      cannot_exceed: AverageDifficulty
+    - option: AverageDifficulty
+      cannot_exceed: HighestDifficulty
