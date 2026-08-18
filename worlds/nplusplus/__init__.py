@@ -3,10 +3,11 @@ from math import ceil
 from typing import Any
 
 from BaseClasses import Location, Tutorial, ItemClassification, CollectionState, Region
+from stardew_valley.stardew_rule import false_
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
 from Options import OptionError
-from .Options import NplusplusOptions, nplusplus_option_groups, InitialStartingTime
+from .Options import NplusplusOptions, nplusplus_option_groups, InitialStartingTime, LowestDifficulty
 from .Items import NplusplusItem, NplusplusItemData, generate_item_data_table, generate_item_table, generate_item_groups, level_unlock_item_data_table
 from .Locations import NplusplusLocation, generate_location_groups, location_table, generate_location_data_table
 from .data import ItemNames
@@ -135,11 +136,26 @@ class NplusplusOpenWorld(World):
         weight_list: list[float] = self.get_weight_list(125)
         levels_by_difficulty: list[list[Level]] = NplusplusOpenWorld.divide_levels_by_difficulty()
         output: list[Level] = []
-        for _ in range (125):
+        for i in range (125):
             difficulty: int = self.get_weighted_difficulty(weight_list)
             while not levels_by_difficulty[difficulty]:
                 NplusplusOpenWorld.remove_weight(weight_list, difficulty)
                 difficulty = self.get_weighted_difficulty(weight_list)
+                do_levels_remain: bool = False
+                for diff in range(self.options.LowestDifficulty, self.options.HighestDifficulty+1):
+                    if levels_by_difficulty[diff]:
+                        do_levels_remain = True
+                        break
+                if do_levels_remain:
+                    weight_list = self.get_weight_list(125-i)
+                else:
+                    if self.options.LowestDifficulty != 0:
+                        self.options.LowestDifficulty.value -= 1
+                    else:
+                        self.options.HighestDifficulty.value += 1
+                    if self.options.HighestDifficulty > 11:
+                        raise Exception("Nplusplus: Unable to generate randomizer due to levels failing to populate")
+                    weight_list = self.get_weight_list(125 - i)
             picked_level: Level = levels_by_difficulty[difficulty][0]
             for time in picked_level.times:
                 if time.challenge in [Challenge.base, Challenge.opt]:
