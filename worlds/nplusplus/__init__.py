@@ -1,9 +1,7 @@
-import json
 from math import ceil
 from typing import Any
 
 from BaseClasses import Location, Tutorial, ItemClassification, CollectionState, Region
-from stardew_valley.stardew_rule import false_
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
 from Options import OptionError
@@ -293,6 +291,8 @@ class NplusplusOpenWorld(World):
             raise OptionError("Nplusplus: Lowest difficulty cannot be higher than average difficulty")
         if self.options.AverageDifficulty > self.options.HighestDifficulty:
             raise OptionError("Nplusplus: Highest difficulty cannot be lower than the average difficulty")
+        if self.options.InitialGoldValue > self.options.MaximumGoldValue:
+            raise OptionError("Nplusplus: Initial gold value cannot be higher than the maximum gold value")
         self.episodes = []
         self.included_challenges = {}
         self.location_to_level = {}
@@ -329,9 +329,9 @@ class NplusplusOpenWorld(World):
                 if completion.time > needed_time:
                     needed_time = completion.time
         starting_time_items: list[int] = [
-            ceil(needed_time * self.options.MaximumStartingTimeMultiplier / 100) - self.options.InitialStartingTime, 0, 0, 0]
+            max(ceil(needed_time * (self.options.MaximumStartingTimeMultiplier / 100)) - self.options.InitialStartingTime,0), 0, 0, 0]
         max_time_items: list[int] = [
-            ceil(needed_time * self.options.MaximumTimeCapMultiplier / 100) - self.options.InitialTimeCap, 0, 0, 0]
+            max(ceil(needed_time * (self.options.MaximumStartingTimeMultiplier / 100) * (self.options.MaximumTimeCapMultiplier / 100)) - self.options.InitialTimeCap,0), 0, 0, 0]
         gold_time_items: list[int] = [self.options.MaximumGoldValue - self.options.InitialGoldValue, 0, 0, 0]
         list_of_lists: list[list[int]] = [starting_time_items, max_time_items, gold_time_items]
         # TODO: THIS SECTION MAY NEED TO BE OVERHAULED TO WEIGH EACH LIST
@@ -494,18 +494,16 @@ class NplusplusOpenWorld(World):
 
         return bingos >= 3
 
-    @staticmethod
-    def single_episode_check(state: CollectionState) -> bool:
-        for location in state.locations_checked:
-            if len(location.name) == 15:
+    def single_episode_check(self, state: CollectionState) -> bool:
+        for episode in self.episodes:
+            if episode.is_possible_state(state, self.options, self.player):
                 return True
         return False
 
-    @staticmethod
-    def all_episode_check(state: CollectionState) -> bool:
+    def all_episode_check(self, state: CollectionState) -> bool:
         episodes_complete: int = 0
-        for location in state.locations_checked:
-            if len(location.name) == 15:
+        for episode in self.episodes:
+            if episode.is_possible_state(state, self.options, self.player):
                 episodes_complete += 1
         if episodes_complete == 25:
             return True

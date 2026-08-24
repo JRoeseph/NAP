@@ -4,3 +4,5 @@ Nplusplus:
       cannot_exceed: AverageDifficulty
     - option: AverageDifficulty
       cannot_exceed: HighestDifficulty
+    - option: InitialGoldValue
+      cannot_exceed: MaximumGoldValue 

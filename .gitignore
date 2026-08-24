@@ -67,6 +67,8 @@ Output Logs/
 /custom_worlds
 /fuzz_output
 fuzz.py
+/worlds/nplusplus/data/NAP++ Difficulties - Level List.csv
+npp.meta
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
